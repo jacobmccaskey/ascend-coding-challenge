@@ -1,6 +1,5 @@
 const { routes } = require("./data/data");
 
-// traverses grid. Similar to breadth-first search algorithm.
 function findAllRoutes(startPoint, endPoint, startDistance) {
   let routeChain = {
     totalDistance: startDistance,
@@ -15,10 +14,20 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
     );
     return routeChain;
   }
+  const checkIfStartMapped = routes.find(
+    (route) => route.startPoint === startPoint.toLowerCase()
+  );
+  const checkIfEndMapped = routes.find(
+    (route) => route.endPoint === endPoint.toLowerCase()
+  );
+  if (!checkIfStartMapped || checkIfEndMapped) {
+    throw new Error("looks like this city isnt mapped yet");
+  }
 
   for (const route of routes) {
     if (route.startPoint === startPoint) {
       const { connectingCities } = route;
+      // checks to see if connecting city is destination and returns routeChain with totalDistance
       let connectsToEndPoint = connectingCities.filter(
         (connecting) => connecting.city === endPoint
       );
@@ -34,6 +43,7 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
         let routesToCheck = [];
         for (let i = 0; i < possibleConnects.length; i++) {
           for (let j = 0; j < routes.length; j++) {
+            // finds next route in routes array to check if that route has connection with destination
             if (possibleConnects[i] === routes[j].startPoint) {
               routesToCheck.push(routes[j]);
             }
@@ -48,6 +58,7 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
           }
         }
         if (routeReducer.length === 0) {
+          // triggers the recursive function to have another go at finding connections between current city's connections and the final destination
           return {
             recurse: true,
             start: startPoint,
@@ -57,6 +68,8 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
             routes: routesToCheck,
           };
         }
+        // the rest of this code constructs return object based on the parameters given one or several connecting cities connect to final destination.
+        // start and end city is returned, totalDistance is calculated, and the last connecting point is returned with object.
         let shortestRoute = [];
         for (let i = 0; i < routeReducer.length; i++) {
           for (let point of routeReducer[i].connectingCities) {
@@ -95,7 +108,7 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
   return routeChain;
 }
 
-function recursive(data, array, cache) {
+function recursive(data, array, cache, start) {
   const { connections } = data;
   let result;
   let shortestRoute;
@@ -121,7 +134,7 @@ function recursive(data, array, cache) {
     shortestRoute = array.reduce((a, b) =>
       a.totalDistance < b.totalDistance ? a : b
     );
-    shortestRoute.start = data.start;
+    shortestRoute.start = start;
     return shortestRoute;
   }
 }
@@ -132,12 +145,10 @@ function determineShortestRoute(start, end, miles) {
   const routeDiscovery = findAllRoutes(start, end, miles);
 
   if (routeDiscovery.recurse) {
-    return recursive(routeDiscovery, options, cache);
+    return recursive(routeDiscovery, options, cache, start);
   } else {
     return routeDiscovery;
   }
 }
 
-// const result = determineShortestRoute("houston", "miami", 0);
-// console.log(result);
 module.exports = { determineShortestRoute };

@@ -1,80 +1,188 @@
 const { orders } = require("./input/orders.js");
 const { determineShortestRoute } = require("./functions");
 
-const configureRoutes = async (orders) => {
-  const maxPallets = 26;
-  let totalPallets = 0;
-  orders.forEach((order) => (totalPallets += order.pallets));
-  //rounds up to nearest whole number to give total number of necessary trips
-  let numberOfTrips = Math.ceil(totalPallets / maxPallets);
-  let routes = [];
-  // for (const order of orders) {
-  //   const start = order.pickCity.toLowerCase();
-  //   const drop = order.dropCity.toLowerCase();
-  //   // third param is a placeholder for miles traveled, it will increase as it travereses nodes on graph.
-  //   let route = determineShortestRoute(drop, start, 0);
-  //   routes.push(route);
-  // }
-  // console.log(routes);
-  const result = configureLoads(orders, numberOfTrips);
-  return result;
+const optimizeLoads = async (orders, callback) => {
+  let timeout = Number(process.argv[2]);
+  const argsCheck = checkArgs(timeout);
+  if (argsCheck === false) {
+    timeout = 30000;
+  }
+  let loads = [];
+  currentLoad = {
+    totalMiles: 0,
+  };
+  let loadCounter = 1;
+  try {
+    const result = await configureLoads(
+      orders,
+      loads,
+      currentLoad,
+      loadCounter
+    );
+    // there is probably a prettier way of doing this with bluebird or Promise.race
+    let timer = setTimeout(() => {
+      if (!result) {
+        throw new Error("execution took too long");
+      } else {
+        return;
+      }
+    }, timeout);
+
+    if (result) {
+      clearTimeout(timer);
+    }
+
+    return result;
+  } catch (error) {
+    callback(error);
+  }
 };
 
-function configureLoads(orders, numOfTrips) {
-  let numberOfOrders = [...Array(orders.length).keys()];
-  let loads = [];
-  // use continue keyword in for loop
-  let endPoints = ["tampa"];
-  let truck = { pallets: 0, route: [], load: 1, totalMiles: 0 };
-  // const buildChainedLoad = (num) => {
-  //   const route = determineShortestRoute(
-  //     orders[num].pickCity.toLowerCase(),
-  //     orders[num].dropCity.toLowerCase(),
-  //     0
-  //   );
-  //   const truckCheck = checkTruck(truck);
+optimizeLoads(orders, handleError).then((results) =>
+  console.log(JSON.stringify(results))
+);
 
-  //   if (truckCheck === false) {
-  //     clearTruckState(truck);
-  //   }
-  //   if (truckCheck === true) {
-  //     addLoad(route, truck, loads);
-  //   }
-  // };
-  // let num = 0;
-  // const result = buildChainedLoad(0);
-  // return result;
-  for (let i = 0; i < orders.length; i++) {
-    const { dropCity, pickCity } = orders[i];
-    const drop = dropCity.toLowerCase();
-    const pick = pickCity.toLowerCase();
-    const checkIfAlreadyInLoad = endPoints.find((city) => city === drop);
-    if (checkIfAlreadyInLoad) {
-      continue;
+function handleError(error) {
+  console.error(error);
+}
+function checkArgs(args) {
+  if (isNaN(args)) {
+    throw new Error("pass in a number as an argument");
+  }
+  typeof args === "number" ? true : false;
+}
+
+async function configureLoads(orders, loadsArray, currentLoad, counter) {
+  const MAXPALLETS = 26;
+
+  // returns loadsArray with current load if all orders have been loaded.
+  if (orders.length === 0) {
+    loadsArray.push(currentLoad);
+    return loadsArray;
+  }
+  if (currentLoad.pallets && currentLoad.pallets === MAXPALLETS) {
+    loadsArray.push(currentLoad);
+    return loadsArray;
+  }
+
+  orders.map((each) => {
+    each.pickCity = each.pickCity.toLowerCase();
+    each.dropCity = each.dropCity.toLowerCase();
+  });
+  // converts pickCity and dropCity to lowercase for use in determineShortestRoute()
+
+  refToCurrentOrder = orders[0];
+  // will need for reference to current order details when constructing load object
+  // reference is stored here before it is spliced out on line 89
+
+  const firstOrderRoute = determineShortestRoute(
+    refToCurrentOrder.pickCity,
+    refToCurrentOrder.dropCity,
+    0
+  );
+  let firstConnectingCity = firstOrderRoute.end;
+  let milesTraveled = firstOrderRoute.totalDistance;
+  let firstPalletsLoaded = refToCurrentOrder.pallets;
+  // only returns if there is one order left in the array
+  // if (orders.length === 1) {
+  //   console.log(firstOrderRoute);
+  // }
+  orders.splice(orders[0], 1);
+
+  let nextOrdersToCheck = [];
+  for (const order of orders) {
+    let orderDetails = determineShortestRoute(
+      firstConnectingCity,
+      order.dropCity,
+      0
+    );
+    nextOrdersToCheck.push(orderDetails);
+  }
+  const nextOrderRoute = nextOrdersToCheck.reduce((a, b) => {
+    if (a.totalDistance < b.totalDistance) {
+      return a;
+    } else {
+      return b;
     }
-    endPoints.push(drop);
-    const route = determineShortestRoute(pick, drop, 0);
-    findNextStop(route, i);
-  }
-}
-function findNextStop(route, num) {
-  console.log(orders[num + 1]);
-  console.log(route);
-}
-function addLoad(route, truck, loads) {}
-function checkTruck(truck) {
-  if (truck.pallets >= 26) {
-    return false;
-  }
-  return true;
-}
+  });
 
-function clearTruckState(truck) {
-  truck.pallets = 0;
-  truck.route = [];
-  truck.load = truck.load += 1;
-  truck.totalMiles = 0;
-}
+  let nextOrder = orders.find((order) => order.dropCity === nextOrderRoute.end);
+  let drops = [];
+  let remainingOrdersArray = orders;
+  drops.push(firstOrderRoute);
+  drops.push(nextOrderRoute);
+  // adds corresponding order number and pallets to each route
+  drops.forEach((drop) => {
+    if (drop.end === refToCurrentOrder.dropCity) {
+      drop.order = refToCurrentOrder.order;
+      drop.pallets = refToCurrentOrder.pallets;
+    }
+    if (drop.end === nextOrder.dropCity) {
+      drop.order = nextOrder.order;
+      drop.pallets = nextOrder.pallets;
+    }
+  });
 
-const result = configureRoutes(orders);
-console.log(result);
+  if (nextOrder.pallets + firstPalletsLoaded <= MAXPALLETS) {
+    currentLoad.totalMiles = milesTraveled + nextOrderRoute.totalDistance;
+    currentLoad.pallets = nextOrder.pallets + firstPalletsLoaded;
+    if (!currentLoad.load) currentLoad.load = counter;
+    if (!currentLoad.route) {
+      currentLoad.route = [
+        {
+          city: firstOrderRoute.start,
+          type: "pick",
+          orders: [refToCurrentOrder.order, nextOrder.order],
+        },
+      ];
+    }
+    drops.forEach((drop) =>
+      currentLoad.route.push({
+        city: drop.end,
+        type: "drop",
+        orders: [drop.order],
+      })
+    );
+    // returns remaining orders for recursion
+    remainingOrdersArray = orders.filter(
+      (order) => order.dropCity !== nextOrder.dropCity
+    );
+  }
+  if (nextOrder.pallets + firstPalletsLoaded > MAXPALLETS) {
+    console.log("max pallets reached");
+    loadsArray.push(currentLoad);
+    counter++;
+    currentLoad = {
+      totalMiles: 0,
+      load: counter,
+    };
+    return configureLoads(
+      remainingOrdersArray,
+      loadsArray,
+      currentLoad,
+      counter
+    );
+  }
+
+  if (remainingOrdersArray.length >= 2) {
+    loadsArray.push(currentLoad);
+    counter++;
+    currentLoad = {
+      totalMiles: 0,
+      load: counter,
+    };
+    return configureLoads(
+      remainingOrdersArray,
+      loadsArray,
+      currentLoad,
+      counter
+    );
+  }
+
+  if (remainingOrdersArray.length === 0 && currentLoad) {
+    loadsArray.push(currentLoad);
+    return loadsArray;
+  }
+
+  return configureLoads(remainingOrdersArray, loadsArray, currentLoad, counter);
+}

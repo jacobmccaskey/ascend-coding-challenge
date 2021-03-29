@@ -29,6 +29,14 @@ const {
   miami,
 } = cities;
 
+// this is just to make my code more readible and reduce lines of code.
+function connectRoute(city, distance) {
+  return {
+    city: city,
+    distance: distance,
+  };
+}
+
 // please let me know if there is better way to do this
 const routes = [
   {
@@ -142,13 +150,5 @@ const routes = [
     ],
   },
 ];
-
-// this is just to make my code more readible and reduce lines of code.
-function connectRoute(city, distance) {
-  return {
-    city: city,
-    distance: distance,
-  };
-}
 
 module.exports = { routes };
