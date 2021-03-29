@@ -46,6 +46,9 @@ function handleError(error) {
   console.error(error);
 }
 function checkArgs(args) {
+  if (!args) {
+    return false;
+  }
   if (isNaN(args)) {
     throw new Error("pass in a number as an argument");
   }
