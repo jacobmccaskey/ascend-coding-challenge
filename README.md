@@ -9,7 +9,7 @@ To change the input, edit the input/orders.js file.
 THINGS I NEED TO COMPLETE
 1.)The tool chains together orders based on how close the remaining orders are, but it does not effectively choose the best route based on both the number of pallets AND the distance between two cities. Basically it only takes into account distance right now.
 2.) I have to calculate the best route by grouping orders based on the number of pallets AND whether or not they have a shared connecting city or endpoint.
-3.) I need a function to handle orders with a large number of pallets.
+3.) I need a function to handle single orders with a large number of pallets.
 4.) Fetching routes between the two most far away cities causes a stack overflow error. I need a cache that keeps track of every route mapped so it is not looped over twice.
 5.) Needs refactoring and renaming of variables.
 COMMANDS
