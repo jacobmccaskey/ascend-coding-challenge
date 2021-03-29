@@ -2,7 +2,7 @@ YOU DO NOT NEED TO RUN NPM INSTALL TO START PROGRAM.
 
 RUN node app.js [ timout ]
 
-the script basically chains together orders based on how close the remaining orders are. If the amount of pallets exceeds the limit of the combined orders, the current load is pushed to the optimized order and a new load is built out with the remaining input.
+the script basically chains together orders based on how close the remaining orders are. If the amount of pallets exceeds the limit of the max pallets allowed, the current load is pushed to the optimized order and a new load is built out with the remaining input.
 
 To change the input, edit the input/orders.js file.
 
