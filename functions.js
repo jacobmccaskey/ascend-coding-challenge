@@ -18,9 +18,10 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
     (route) => route.startPoint === startPoint.toLowerCase()
   );
   const checkIfEndMapped = routes.find(
-    (route) => route.endPoint === endPoint.toLowerCase()
+    (route) => route.startPoint === endPoint.toLowerCase()
   );
-  if (!checkIfStartMapped || checkIfEndMapped) {
+
+  if (!checkIfStartMapped || !checkIfEndMapped) {
     throw new Error("looks like this city isnt mapped yet");
   }
 
