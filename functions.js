@@ -8,6 +8,9 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
     connections: [],
   };
 
+  if (!routeChain.cache) {
+    routeChain.cache = [];
+  }
   if (startPoint === endPoint) {
     console.log(
       "please help the environment by walking your delivery to the location"
@@ -32,16 +35,25 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
       let connectsToEndPoint = connectingCities.filter(
         (connecting) => connecting.city === endPoint
       );
+      // console.log(`${startPoint} ,` + JSON.stringify(connectsToEndPoint));
       if (connectsToEndPoint.length !== 0) {
         routeChain.totalDistance += connectsToEndPoint[0].distance;
         return routeChain;
       }
       if (connectsToEndPoint.length === 0 || connectsToEndPoint === undefined) {
+        routeChain.cache.push(startPoint);
         let possibleConnects = [];
         connectingCities.forEach((option) =>
           possibleConnects.push(option.city)
         );
+        routeChain.cache.forEach(
+          (city) =>
+            (possibleConnects = possibleConnects.filter(
+              (connect) => city !== connect
+            ))
+        );
         let routesToCheck = [];
+
         for (let i = 0; i < possibleConnects.length; i++) {
           for (let j = 0; j < routes.length; j++) {
             // finds next route in routes array to check if that route has connection with destination
@@ -67,6 +79,7 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
             connections: connectingCities,
             mileCount: startDistance,
             routes: routesToCheck,
+            cache: routeChain.cache,
           };
         }
         // the rest of this code constructs return object based on the parameters given one or several connecting cities connect to final destination.
@@ -110,9 +123,16 @@ function findAllRoutes(startPoint, endPoint, startDistance) {
 }
 
 function recursive(data, array, cache, start) {
-  const { connections } = data;
+  let { connections } = data;
   let result;
   let shortestRoute;
+  if (cache) {
+    // filters out cached connections from data that will be looped through
+    cache.forEach(
+      (city) =>
+        (connections = connections.filter((connect) => city !== connect.city))
+    );
+  }
   for (const connecting of connections) {
     result = findAllRoutes(connecting.city, data.end, connecting.distance);
 
@@ -129,7 +149,7 @@ function recursive(data, array, cache, start) {
     }
   }
   if (array.length === 0) {
-    return recursive(result, array, cache);
+    return recursive(result, array, cache, start);
   }
   if (array.length !== 0) {
     shortestRoute = array.reduce((a, b) =>
@@ -146,10 +166,14 @@ function determineShortestRoute(start, end, miles) {
   const routeDiscovery = findAllRoutes(start, end, miles);
 
   if (routeDiscovery.recurse) {
+    cache = routeDiscovery.cache;
     return recursive(routeDiscovery, options, cache, start);
   } else {
     return routeDiscovery;
   }
 }
+
+// let result = determineShortestRoute("miami", "houston", 0);
+// console.log(result);
 
 module.exports = { determineShortestRoute };
